@@ -50,12 +50,12 @@ from ...utils import (
     logging,
     replace_return_docstrings,
 )
-from ...utils.kernel_hub import Architecture, LayerRepository, KERNEL_MAPPING, use_hub_kernel
+from ...utils.kernel_hub import Architecture, LayerRepository, KERNEL_MAPPING, use_hub_kernel, use_hub_kernel_forward
 from ...utils.deprecation import deprecate_kwarg
 from .configuration_llama import LlamaConfig
 
 
-KERNEL_MAPPING["LlamaRMSNorm"] = {Architecture(device="cuda"): LayerRepository("RMSNorm", "kernels-community/triton-layer-norm", "main")}
+KERNEL_MAPPING["LlamaRMSNorm"] = {Architecture(device_type="cuda"): LayerRepository(layer_name="RMSNorm", repo_id="kernels-community/triton-layer-norm")}
 
 
 if is_torch_flex_attn_available():
@@ -70,8 +70,8 @@ _CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 
-#@use_hub_kernel("kernels-community/triton-layer-norm", layer_name="RMSNorm")
-@use_hub_kernel("LlamaRMSNorm")
+#@use_hub_kernel("LlamaRMSNorm")
+@use_hub_kernel_forward("LlamaRMSNorm")
 class LlamaRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         """
@@ -80,6 +80,10 @@ class LlamaRMSNorm(nn.Module):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(hidden_size))
         self.variance_epsilon = eps
+        # Align parameters with hub kernel.
+        self.bias = None
+        self.drop = None
+        self.eps = eps
 
     def forward(self, hidden_states):
         input_dtype = hidden_states.dtype
