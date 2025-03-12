@@ -19,10 +19,11 @@
 # limitations under the License.
 from typing import Callable, List, Optional, Tuple, Union
 
-from kernels import use_hub_kernel
+#from kernels import use_hub_kernel
 import torch
 import torch.utils.checkpoint
 from torch import nn
+
 
 from ...activations import ACT2FN
 from ...cache_utils import Cache, DynamicCache, StaticCache
@@ -49,8 +50,12 @@ from ...utils import (
     logging,
     replace_return_docstrings,
 )
+from ...utils.kernel_hub import Architecture, LayerRepository, KERNEL_MAPPING, use_hub_kernel
 from ...utils.deprecation import deprecate_kwarg
 from .configuration_llama import LlamaConfig
+
+
+KERNEL_MAPPING["LlamaRMSNorm"] = {Architecture(device="cuda"): LayerRepository("RMSNorm", "kernels-community/triton-layer-norm", "main")}
 
 
 if is_torch_flex_attn_available():
@@ -65,7 +70,8 @@ _CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 
-@use_hub_kernel("kernels-community/triton-layer-norm", layer_name="RMSNorm", fallback_on_error=False)
+#@use_hub_kernel("kernels-community/triton-layer-norm", layer_name="RMSNorm")
+@use_hub_kernel("LlamaRMSNorm")
 class LlamaRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         """

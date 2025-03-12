@@ -730,8 +730,6 @@ class LlamaIntegrationTest(unittest.TestCase):
             8: torch.tensor([[ 0.2555, -2.2305, -3.2299, -3.1255, -3.3833, -4.3228, -4.5412, -4.8883]])
         }
 
-        print(out.logits.float().mean(-1))
-
         self.assertTrue(
             torch.allclose(
                 EXPECTED_MEAN[self.cuda_compute_capability_major_version].to(torch_device),
