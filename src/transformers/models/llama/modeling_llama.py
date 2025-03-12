@@ -19,6 +19,7 @@
 # limitations under the License.
 from typing import Callable, List, Optional, Tuple, Union
 
+from kernels import use_hub_kernel
 import torch
 import torch.utils.checkpoint
 from torch import nn
@@ -64,6 +65,7 @@ _CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 
+@use_hub_kernel("kernels-community/triton-layer-norm", layer_name="RMSNorm", fallback_on_error=False)
 class LlamaRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         """
