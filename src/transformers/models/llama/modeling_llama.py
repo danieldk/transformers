@@ -19,9 +19,11 @@
 # limitations under the License.
 from typing import Callable, List, Optional, Tuple, Union
 
+from kernels import use_kernel_forward_from_hub
 import torch
 import torch.utils.checkpoint
 from torch import nn
+
 
 from ...activations import ACT2FN
 from ...cache_utils import Cache, DynamicCache, StaticCache
@@ -64,6 +66,7 @@ _CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 
+@use_kernel_forward_from_hub("LlamaRMSNorm")
 class LlamaRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         """

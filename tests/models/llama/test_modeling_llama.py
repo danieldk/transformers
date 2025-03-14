@@ -16,6 +16,7 @@
 
 import unittest
 
+from kernels import Device, LayerRepository, register_kernel_mapping
 from packaging import version
 from parameterized import parameterized
 
@@ -580,6 +581,63 @@ class LlamaIntegrationTest(unittest.TestCase):
         generated_ids = model.generate(**model_inputs, max_new_tokens=128, do_sample=False)
         generated_text = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
         self.assertEqual(generated_text, EXPECTED_TEXT)
+
+    @slow
+    @require_read_token
+    def test_model31_7b_logits_bf16(self):
+        register_kernel_mapping(
+            {
+                "LlamaRMSNorm": {
+                    Device(type="cuda"): LayerRepository(
+                        repo_id="kernels-community/triton-layer-norm",
+                        revision="pure-layer-test",
+                        layer_name="LlamaRMSNorm",
+                    )
+                }
+            }
+        )
+
+        input_ids = [1, 306, 4658, 278, 6593, 310, 2834, 338]
+
+        model = LlamaForCausalLM.from_pretrained(
+            "meta-llama/Meta-Llama-3.1-8B-Instruct",
+            device_map="auto",
+            torch_dtype=torch.bfloat16,
+            attn_implementation="eager",
+        )
+
+        with torch.no_grad():
+            out = model(torch.tensor([input_ids]).to(torch_device))
+        # Expected mean on dim = -1
+
+        # fmt: off
+        EXPECTED_MEAN = {
+            8: torch.tensor([[ 0.2555, -2.2305, -3.2299, -3.1255, -3.3833, -4.3228, -4.5412, -4.8883]])
+        }
+
+        self.assertTrue(
+            torch.allclose(
+                EXPECTED_MEAN[self.cuda_compute_capability_major_version].to(torch_device),
+                out.logits.float().mean(-1),
+                atol=1e-1,
+                rtol=1e-1
+            )
+        )
+
+        # slicing logits[0, 0, 0:15]
+        EXPECTED_SLICE = {
+            8: torch.tensor([-20.6250, -15.5000, -15.8125, -13.6250, -12.0000, -15.0000, -15.7500, -20.5000, -15.0625, -19.5000, -16.3750, -17.8750, -18.5000, -22.5000, -17.5000])
+        }
+        # fmt: on
+
+        self.assertTrue(
+            torch.allclose(
+                EXPECTED_SLICE[self.cuda_compute_capability_major_version].to(torch_device),
+                out.logits[0, 0, :15].float(),
+                atol=1e-2,
+                rtol=1e-2,
+            )
+        )
 
     @slow
     @require_read_token
